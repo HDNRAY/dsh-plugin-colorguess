@@ -1,0 +1,11 @@
+# ColorGuess DSH plugin bundle patch: insert the plugin row into the profile.
+#
+# The browser half ships via exports["./client"] (declared in package.json
+# `dsh.client`) and is discovered automatically by the web client module
+# graph; this row gives the plugin a Loader entry and its configuration.
+
+- insert:
+    - id: colorguess
+      name: colorguess-dsh-plugin
+      config:
+        gameUrl: 'https://hdnray.github.io/colorguess/'
