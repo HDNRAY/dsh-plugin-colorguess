@@ -6,9 +6,15 @@ name: Sync built lib
 #
 # Branch protection requires pull requests for main, so this workflow opens a
 # PR with the rebuilt lib instead of pushing directly — no bypass needed.
+#
+# Runs on both push-to-main and pull_request: the `build` job is the required
+# status check for PRs (verifies the bundle compiles); only the push-to-main
+# run rebuilds lib/ and opens the sync PR.
 
 on:
     push:
+        branches: ['main']
+    pull_request:
         branches: ['main']
 
 jobs:
@@ -24,6 +30,9 @@ jobs:
             - run: npm install --no-audit --no-fund
             - run: npm run build
             - name: Open PR for rebuilt lib
+              # Only the push-to-main run rebuilds lib and opens the sync PR;
+              # on pull_request this step is skipped (build already verified).
+              if: github.event_name == 'push'
               env:
                   GH_TOKEN: ${{ github.token }}
               run: |
