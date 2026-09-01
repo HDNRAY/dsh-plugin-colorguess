@@ -56,7 +56,7 @@ function palette(theme: HostTheme): {
 } {
   return theme === 'dark'
     ? { bg: '#0f1115', text: '#eceef2', secondary: '#a3aab6', border: 'rgba(236,238,242,0.12)' }
-    : { bg: '#f4f5f7', text: '#16181d', secondary: '#5f6672', border: 'rgba(22,24,29,0.10)' }
+    : { bg: '#f4f5f7', text: '#16181d', secondary: '#16181d', border: 'rgba(22,24,29,0.10)' }
 }
 
 /** Draggable, resizable floating window hosting the game. */
