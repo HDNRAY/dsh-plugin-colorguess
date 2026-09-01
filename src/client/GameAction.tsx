@@ -90,52 +90,60 @@ function FloatingWindow({
   } | null>(null)
 
   const startDrag = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    // Capture the pointer so move/up keep firing even outside the window —
+    // releasing anywhere stops the drag.
+    event.currentTarget.setPointerCapture(event.pointerId)
     dragRef.current = {
       startX: event.clientX,
       startY: event.clientY,
       origLeft: pos.left,
       origTop: pos.top,
     }
+  }
 
-    const onMove = (move: PointerEvent): void => {
-      const drag = dragRef.current
-      if (!drag) return
-      const left = clamp(drag.origLeft + move.clientX - drag.startX, 0, window.innerWidth - size.width)
-      const top = clamp(drag.origTop + move.clientY - drag.startY, 0, window.innerHeight - 32)
-      setPos({ left, top })
+  const onDragMove = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    const drag = dragRef.current
+    if (!drag) return
+    const left = clamp(drag.origLeft + event.clientX - drag.startX, 0, window.innerWidth - size.width)
+    const top = clamp(drag.origTop + event.clientY - drag.startY, 0, window.innerHeight - 32)
+    setPos({ left, top })
+  }
+
+  const endDrag = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    dragRef.current = null
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    } catch {
+      /* pointer already released */
     }
-    const onUp = (): void => {
-      dragRef.current = null
-      window.removeEventListener('pointermove', onMove)
-      window.removeEventListener('pointerup', onUp)
-    }
-    window.addEventListener('pointermove', onMove)
-    window.addEventListener('pointerup', onUp)
   }
 
   const startResize = (event: ReactPointerEvent<HTMLDivElement>): void => {
     event.stopPropagation()
+    event.currentTarget.setPointerCapture(event.pointerId)
     resizeRef.current = {
       startX: event.clientX,
       startY: event.clientY,
       origW: size.width,
       origH: size.height,
     }
+  }
 
-    const onMove = (move: PointerEvent): void => {
-      const resizing = resizeRef.current
-      if (!resizing) return
-      const width = clamp(resizing.origW + move.clientX - resizing.startX, MIN_WIDTH, window.innerWidth - pos.left)
-      const height = clamp(resizing.origH + move.clientY - resizing.startY, MIN_HEIGHT, window.innerHeight - pos.top - 8)
-      setSize({ width, height })
+  const onResizeMove = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    const resizing = resizeRef.current
+    if (!resizing) return
+    const width = clamp(resizing.origW + event.clientX - resizing.startX, MIN_WIDTH, window.innerWidth - pos.left)
+    const height = clamp(resizing.origH + event.clientY - resizing.startY, MIN_HEIGHT, window.innerHeight - pos.top - 8)
+    setSize({ width, height })
+  }
+
+  const endResize = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    resizeRef.current = null
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    } catch {
+      /* pointer already released */
     }
-    const onUp = (): void => {
-      resizeRef.current = null
-      window.removeEventListener('pointermove', onMove)
-      window.removeEventListener('pointerup', onUp)
-    }
-    window.addEventListener('pointermove', onMove)
-    window.addEventListener('pointerup', onUp)
   }
 
   const p = palette(theme)
@@ -160,6 +168,9 @@ function FloatingWindow({
     >
       <div
         onPointerDown={startDrag}
+        onPointerMove={onDragMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -203,6 +214,9 @@ function FloatingWindow({
       {/* invisible resize hotspot — cursor shows the affordance */}
       <div
         onPointerDown={startResize}
+        onPointerMove={onResizeMove}
+        onPointerUp={endResize}
+        onPointerCancel={endResize}
         style={{
           position: 'absolute',
           right: 0,
