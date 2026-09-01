@@ -48,10 +48,11 @@ const CLOSE_STYLE: CSSProperties = {
   lineHeight: 1,
 }
 
-const WIN_WIDTH = 400
-const WIN_HEIGHT = 600
-const MIN_WIDTH = 280
-const MIN_HEIGHT = 420
+// Default window fits the game's phone-frame layout without scrolling.
+const WIN_WIDTH = 440
+const WIN_HEIGHT = 720
+const MIN_WIDTH = 300
+const MIN_HEIGHT = 480
 
 /** Clamp a value into [min, max]. */
 function clamp(value: number, min: number, max: number): number {
@@ -163,8 +164,10 @@ function FloatingWindow({
           cursor: 'move',
           touchAction: 'none',
           userSelect: 'none',
-          background: 'var(--dsw-surface)',
-          borderBottom: '1px solid var(--dsw-border)',
+          // Solid bar — explicit fallbacks so it is never transparent even if
+          // the shell theme tokens are unavailable.
+          background: 'var(--dsw-surface, #ffffff)',
+          borderBottom: '1px solid var(--dsw-border, rgba(128,128,128,0.3))',
           flexShrink: 0,
         }}
       >
@@ -184,17 +187,19 @@ function FloatingWindow({
       {/* resize handle (bottom-right corner) */}
       <div
         onPointerDown={startResize}
+        title="Drag to resize"
         style={{
           position: 'absolute',
           right: 0,
           bottom: 0,
-          width: 18,
-          height: 18,
+          width: 20,
+          height: 20,
           cursor: 'nwse-resize',
           touchAction: 'none',
-          borderRight: '3px solid var(--dsw-border)',
-          borderBottom: '3px solid var(--dsw-border)',
-          borderBottomRightRadius: 10,
+          // visible diagonal grip triangle in the corner
+          background:
+            'linear-gradient(135deg, transparent 50%, var(--dsw-text-muted, #888888) 50%)',
+          borderBottomRightRadius: 12,
         }}
       />
     </div>
