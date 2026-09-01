@@ -46,7 +46,17 @@ export function apply(ctx: Context, config: ColorGuessConfig = {}): void {
             listener(snapshot.active.colorScheme === 'dark' ? 'dark' : 'light')
           }
           ctx.on('theme/change', onChange)
-          onChange(ctx.theme.snapshot())
+          // API drift guard: DSH renamed ThemeRuntime#snapshot() -> getTheme()
+          const themeService = ctx.theme as unknown as {
+            snapshot?: () => { active: { colorScheme: string } }
+            getTheme?: () => { active: { colorScheme: string } }
+          }
+          const readSnapshot = () =>
+            (themeService.snapshot?.() ?? themeService.getTheme?.()) as
+              | { active: { colorScheme: string } }
+              | undefined
+          const initial = readSnapshot()
+          if (initial !== undefined) onChange(initial)
           return () => {
             ctx.off('theme/change', onChange)
           }
