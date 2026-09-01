@@ -1,8 +1,8 @@
 /**
  * Session-header action for ColorGuess: a trigger button that toggles a
- * draggable floating window (default top-right) holding the game in an
- * iframe. The game follows the host theme via postMessage. All visuals use
- * DSH theme tokens (var(--dsw-*)).
+ * draggable, resizable floating window (default top-right) holding the game
+ * in an iframe. The window tracks the host theme and matches the game's
+ * palette so the title bar blends with the game background.
  */
 import {
   useEffect,
@@ -36,18 +36,6 @@ const TRIGGER_STYLE: CSSProperties = {
   whiteSpace: 'nowrap',
 }
 
-const CLOSE_STYLE: CSSProperties = {
-  border: 'none',
-  cursor: 'pointer',
-  background: 'var(--dsw-surface-2)',
-  color: 'var(--dsw-text-secondary)',
-  fontSize: 13,
-  fontWeight: 600,
-  padding: '4px 10px',
-  borderRadius: 6,
-  lineHeight: 1,
-}
-
 // Default window fits the game's phone-frame layout without scrolling.
 const WIN_WIDTH = 440
 const WIN_HEIGHT = 720
@@ -59,13 +47,27 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value))
 }
 
+/** Theme palette mirroring the game's tokens, so the window blends with it. */
+function palette(theme: HostTheme): {
+  bg: string
+  text: string
+  secondary: string
+  border: string
+} {
+  return theme === 'dark'
+    ? { bg: '#0f1115', text: '#eceef2', secondary: '#a3aab6', border: 'rgba(236,238,242,0.12)' }
+    : { bg: '#f4f5f7', text: '#16181d', secondary: '#5f6672', border: 'rgba(22,24,29,0.10)' }
+}
+
 /** Draggable, resizable floating window hosting the game. */
 function FloatingWindow({
   gameUrl,
+  theme,
   iframeRef,
   onClose,
 }: {
   gameUrl: string
+  theme: HostTheme
   iframeRef: RefObject<HTMLIFrameElement | null>
   onClose: () => void
 }) {
@@ -136,6 +138,8 @@ function FloatingWindow({
     window.addEventListener('pointerup', onUp)
   }
 
+  const p = palette(theme)
+
   return (
     <div
       style={{
@@ -145,8 +149,8 @@ function FloatingWindow({
         width: size.width,
         height: size.height,
         zIndex: 9999,
-        background: 'var(--dsw-bg)',
-        border: '1px solid var(--dsw-border)',
+        background: p.bg,
+        border: `1px solid ${p.border}`,
         borderRadius: 12,
         boxShadow: '0 8px 40px rgba(0, 0, 0, 0.35)',
         display: 'flex',
@@ -164,17 +168,29 @@ function FloatingWindow({
           cursor: 'move',
           touchAction: 'none',
           userSelect: 'none',
-          // Solid bar — explicit fallbacks so it is never transparent even if
-          // the shell theme tokens are unavailable.
-          background: 'var(--dsw-surface, #ffffff)',
-          borderBottom: '1px solid var(--dsw-border, rgba(128,128,128,0.3))',
+          background: p.bg,
+          borderBottom: `1px solid ${p.border}`,
           flexShrink: 0,
         }}
       >
-        <span style={{ color: 'var(--dsw-text)', fontSize: 13, fontWeight: 700 }}>
+        <span style={{ color: p.text, fontSize: 13, fontWeight: 700 }}>
           ColorGuess
         </span>
-        <button type="button" style={CLOSE_STYLE} onClick={onClose}>
+        <button
+          type="button"
+          onClick={onClose}
+          style={{
+            border: 'none',
+            cursor: 'pointer',
+            background: 'transparent',
+            color: p.secondary,
+            fontSize: 14,
+            fontWeight: 600,
+            padding: '4px 8px',
+            borderRadius: 6,
+            lineHeight: 1,
+          }}
+        >
           ✕
         </button>
       </div>
@@ -184,22 +200,17 @@ function FloatingWindow({
         title="ColorGuess"
         style={{ flex: 1, border: 'none', width: '100%' }}
       />
-      {/* resize handle (bottom-right corner) */}
+      {/* invisible resize hotspot — cursor shows the affordance */}
       <div
         onPointerDown={startResize}
-        title="Drag to resize"
         style={{
           position: 'absolute',
           right: 0,
           bottom: 0,
-          width: 20,
-          height: 20,
+          width: 18,
+          height: 18,
           cursor: 'nwse-resize',
           touchAction: 'none',
-          // visible diagonal grip triangle in the corner
-          background:
-            'linear-gradient(135deg, transparent 50%, var(--dsw-text-muted, #888888) 50%)',
-          borderBottomRightRadius: 12,
         }}
       />
     </div>
@@ -207,12 +218,19 @@ function FloatingWindow({
 }
 
 /**
- * Header entry point: toggles the floating game window and forwards the host
- * theme into the iframe. Closes on Escape.
+ * Header entry point: toggles the floating game window, tracks the host theme
+ * and forwards it into the iframe. Closes on Escape.
  * @param props - runtime slot currency plus the game URL and theme hook.
  */
 export function GameAction({ gameUrl, subscribeTheme }: GameActionProps) {
   const [open, setOpen] = useState(false)
+  const [theme, setTheme] = useState<HostTheme>(() =>
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-color-scheme: dark)').matches
+      ? 'dark'
+      : 'light',
+  )
   const iframeRef = useRef<HTMLIFrameElement | null>(null)
 
   useEffect(() => {
@@ -224,13 +242,13 @@ export function GameAction({ gameUrl, subscribeTheme }: GameActionProps) {
     return () => window.removeEventListener('keydown', onKey)
   }, [open])
 
-  // Forward the host's resolved theme into the game iframe (immediate + on
-  // change), while the window is open. Defensive: the inject face is optional.
+  // Track the host theme (styles the window) and forward it into the game.
   useEffect(() => {
     if (!open || typeof subscribeTheme !== 'function') return
-    return subscribeTheme((theme) => {
+    return subscribeTheme((next) => {
+      setTheme(next)
       iframeRef.current?.contentWindow?.postMessage(
-        { source: THEME_MESSAGE_SOURCE, theme },
+        { source: THEME_MESSAGE_SOURCE, theme: next },
         '*',
       )
     })
@@ -249,6 +267,7 @@ export function GameAction({ gameUrl, subscribeTheme }: GameActionProps) {
       {open ? (
         <FloatingWindow
           gameUrl={gameUrl}
+          theme={theme}
           iframeRef={iframeRef}
           onClose={() => setOpen(false)}
         />
