@@ -87,9 +87,14 @@ function FloatingWindow({
     startY: number
     origW: number
     origH: number
+    origLeft: number
+    corner: 'se' | 'sw'
   } | null>(null)
 
   const startDrag = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    // Ignore drags that begin on the close button so its click still fires
+    // (pointer capture on the title bar would otherwise swallow it).
+    if ((event.target as HTMLElement).closest('button')) return
     // Capture the pointer so move/up keep firing even outside the window —
     // releasing anywhere stops the drag.
     event.currentTarget.setPointerCapture(event.pointerId)
@@ -118,7 +123,7 @@ function FloatingWindow({
     }
   }
 
-  const startResize = (event: ReactPointerEvent<HTMLDivElement>): void => {
+  const startResize = (event: ReactPointerEvent<HTMLDivElement>, corner: 'se' | 'sw'): void => {
     event.stopPropagation()
     event.currentTarget.setPointerCapture(event.pointerId)
     resizeRef.current = {
@@ -126,14 +131,27 @@ function FloatingWindow({
       startY: event.clientY,
       origW: size.width,
       origH: size.height,
+      origLeft: pos.left,
+      corner,
     }
   }
 
   const onResizeMove = (event: ReactPointerEvent<HTMLDivElement>): void => {
     const resizing = resizeRef.current
     if (!resizing) return
-    const width = clamp(resizing.origW + event.clientX - resizing.startX, MIN_WIDTH, window.innerWidth - pos.left)
-    const height = clamp(resizing.origH + event.clientY - resizing.startY, MIN_HEIGHT, window.innerHeight - pos.top - 8)
+    const dx = event.clientX - resizing.startX
+    const dy = event.clientY - resizing.startY
+    let left = resizing.origLeft
+    let width: number
+    if (resizing.corner === 'se') {
+      width = clamp(resizing.origW + dx, MIN_WIDTH, window.innerWidth - resizing.origLeft)
+    } else {
+      // Bottom-left: right edge stays fixed, window shifts with the pointer.
+      left = clamp(resizing.origLeft + dx, 0, resizing.origLeft + resizing.origW - MIN_WIDTH)
+      width = resizing.origLeft + resizing.origW - left
+    }
+    const height = clamp(resizing.origH + dy, MIN_HEIGHT, window.innerHeight - pos.top - 8)
+    setPos({ left, top: pos.top })
     setSize({ width, height })
   }
 
@@ -190,6 +208,7 @@ function FloatingWindow({
         <button
           type="button"
           onClick={onClose}
+          onPointerDown={(event) => event.stopPropagation()}
           style={{
             border: 'none',
             cursor: 'pointer',
@@ -211,9 +230,9 @@ function FloatingWindow({
         title="ColorGuess"
         style={{ flex: 1, border: 'none', width: '100%' }}
       />
-      {/* invisible resize hotspot — cursor shows the affordance */}
+      {/* invisible resize hotspots — cursors show the affordance */}
       <div
-        onPointerDown={startResize}
+        onPointerDown={(event) => startResize(event, 'se')}
         onPointerMove={onResizeMove}
         onPointerUp={endResize}
         onPointerCancel={endResize}
@@ -224,6 +243,21 @@ function FloatingWindow({
           width: 18,
           height: 18,
           cursor: 'nwse-resize',
+          touchAction: 'none',
+        }}
+      />
+      <div
+        onPointerDown={(event) => startResize(event, 'sw')}
+        onPointerMove={onResizeMove}
+        onPointerUp={endResize}
+        onPointerCancel={endResize}
+        style={{
+          position: 'absolute',
+          left: 0,
+          bottom: 0,
+          width: 18,
+          height: 18,
+          cursor: 'nesw-resize',
           touchAction: 'none',
         }}
       />
