@@ -50,8 +50,15 @@ const CLOSE_STYLE: CSSProperties = {
 
 const WIN_WIDTH = 400
 const WIN_HEIGHT = 600
+const MIN_WIDTH = 280
+const MIN_HEIGHT = 420
 
-/** Draggable floating window hosting the game. */
+/** Clamp a value into [min, max]. */
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value))
+}
+
+/** Draggable, resizable floating window hosting the game. */
 function FloatingWindow({
   gameUrl,
   iframeRef,
@@ -65,11 +72,18 @@ function FloatingWindow({
     left: Math.max(8, window.innerWidth - WIN_WIDTH - 16),
     top: 48,
   }))
+  const [size, setSize] = useState({ width: WIN_WIDTH, height: WIN_HEIGHT })
   const dragRef = useRef<{
     startX: number
     startY: number
     origLeft: number
     origTop: number
+  } | null>(null)
+  const resizeRef = useRef<{
+    startX: number
+    startY: number
+    origW: number
+    origH: number
   } | null>(null)
 
   const startDrag = (event: ReactPointerEvent<HTMLDivElement>): void => {
@@ -83,12 +97,37 @@ function FloatingWindow({
     const onMove = (move: PointerEvent): void => {
       const drag = dragRef.current
       if (!drag) return
-      const left = Math.max(0, Math.min(window.innerWidth - WIN_WIDTH, drag.origLeft + move.clientX - drag.startX))
-      const top = Math.max(0, Math.min(window.innerHeight - 32, drag.origTop + move.clientY - drag.startY))
+      const left = clamp(drag.origLeft + move.clientX - drag.startX, 0, window.innerWidth - size.width)
+      const top = clamp(drag.origTop + move.clientY - drag.startY, 0, window.innerHeight - 32)
       setPos({ left, top })
     }
     const onUp = (): void => {
       dragRef.current = null
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+  }
+
+  const startResize = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    event.stopPropagation()
+    resizeRef.current = {
+      startX: event.clientX,
+      startY: event.clientY,
+      origW: size.width,
+      origH: size.height,
+    }
+
+    const onMove = (move: PointerEvent): void => {
+      const resizing = resizeRef.current
+      if (!resizing) return
+      const width = clamp(resizing.origW + move.clientX - resizing.startX, MIN_WIDTH, window.innerWidth - pos.left)
+      const height = clamp(resizing.origH + move.clientY - resizing.startY, MIN_HEIGHT, window.innerHeight - pos.top - 8)
+      setSize({ width, height })
+    }
+    const onUp = (): void => {
+      resizeRef.current = null
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onUp)
     }
@@ -102,10 +141,8 @@ function FloatingWindow({
         position: 'fixed',
         left: pos.left,
         top: pos.top,
-        width: WIN_WIDTH,
-        maxWidth: '94vw',
-        height: WIN_HEIGHT,
-        maxHeight: '90vh',
+        width: size.width,
+        height: size.height,
         zIndex: 9999,
         background: 'var(--dsw-bg)',
         border: '1px solid var(--dsw-border)',
@@ -126,6 +163,7 @@ function FloatingWindow({
           cursor: 'move',
           touchAction: 'none',
           userSelect: 'none',
+          background: 'var(--dsw-surface)',
           borderBottom: '1px solid var(--dsw-border)',
           flexShrink: 0,
         }}
@@ -142,6 +180,22 @@ function FloatingWindow({
         src={gameUrl}
         title="ColorGuess"
         style={{ flex: 1, border: 'none', width: '100%' }}
+      />
+      {/* resize handle (bottom-right corner) */}
+      <div
+        onPointerDown={startResize}
+        style={{
+          position: 'absolute',
+          right: 0,
+          bottom: 0,
+          width: 18,
+          height: 18,
+          cursor: 'nwse-resize',
+          touchAction: 'none',
+          borderRight: '3px solid var(--dsw-border)',
+          borderBottom: '3px solid var(--dsw-border)',
+          borderBottomRightRadius: 10,
+        }}
       />
     </div>
   )

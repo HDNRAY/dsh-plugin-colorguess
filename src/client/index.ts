@@ -45,7 +45,8 @@ export function apply(ctx: Context, config: ColorGuessConfig = {}): void {
           const onChange = (snapshot: { active: { colorScheme: string } }): void => {
             listener(snapshot.active.colorScheme === 'dark' ? 'dark' : 'light')
           }
-          ctx.on('theme/change', onChange)
+          // ctx.on returns a disposer in current Cordis — ctx.off no longer exists.
+          const dispose = ctx.on('theme/change', onChange)
           // API drift guard across DSH versions:
           //  - old: ThemeRuntime#snapshot() method
           //  - new (0.1.2): ThemeRuntime#getTheme() method; the compiled
@@ -72,7 +73,7 @@ export function apply(ctx: Context, config: ColorGuessConfig = {}): void {
           const initial = readSnapshot()
           if (initial !== undefined) onChange(initial)
           return () => {
-            ctx.off('theme/change', onChange)
+            if (typeof dispose === 'function') dispose()
           }
         },
       }),
