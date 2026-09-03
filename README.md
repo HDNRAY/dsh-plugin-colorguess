@@ -13,7 +13,7 @@ dsh plugin --profile web add github:HDNRAY/dsh-plugin-colorguess
 # 然后重启 dsh web
 ```
 
-重启后，在会话头部（聊天页右上角操作区）会出现 **ColorGuess** 按钮，点击打开悬浮窗内嵌游戏。游戏默认加载 `https://hdnray.github.io/colorguess/`。
+重启后，在会话头部（聊天页右上角操作区）会出现 **ColorGuess** 按钮，点击打开悬浮窗内嵌游戏。
 
 更新插件（代码或 `lib/` 有新版后）：
 
@@ -22,22 +22,10 @@ dsh plugin --profile web update colorguess-dsh-plugin
 # 然后重启 dsh web
 ```
 
-## 覆盖游戏地址 / Override game URL
-
-默认指向 HDNRAY 部署在 GitHub Pages 的实例。要改成你自己的游戏地址，在 profile 的 `cordis.patch.yml` 里覆盖：
-
-```yaml
-- update:
-    - id: colorguess
-      config:
-        gameUrl: 'https://your-game-url/'
-```
-
 ## 功能 / Features
 
 - 可拖动的悬浮窗（拖动标题栏移动，✕ / Esc 关闭），默认右上角
 - 主题同步：游戏跟随 DSH 的亮/暗主题（postMessage 协议 `{ source: 'colorguess-dsh', theme }`）
-- 游戏地址可配置（见上）
 
 ## 开发 / Development
 
@@ -58,7 +46,7 @@ npm run build        # 重新构建 lib/index.js + lib/client.js
 - `src/index.ts` — 宿主端（空 apply，让插件进入 Loader）
 - `src/client/` — 浏览器端：头部按钮 + 悬浮窗 iframe + 主题转发
 - `scripts/build.mjs` — 构建脚本（esbuild，产出 `__ModuleLoader__.load` 契约的 client bundle）
-- `cordis.patch.yml` — 插件行 + `gameUrl` 配置
+- `cordis.patch.yml` — 插件行配置
 
 ## 许可 / License
 
