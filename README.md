@@ -1,6 +1,6 @@
 # colorguess-dsh-plugin
 
-[![Listed on DSH Plugin Hub](https://dsh-plugin.org/badges/listed.svg)](https://dsh-plugin.org/plugins/HDNRAY/dsh-plugin-colorguess)
+[![Listed on dsh-plugin.org](https://dsh-plugin.org/badges/listed.svg)](https://dsh-plugin.org/plugins/hdnray/dsh-plugin-colorguess)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 > **非官方社区插件**，由社区成员独立开发和维护，与 DeepSeek 官方无隶属关系。
