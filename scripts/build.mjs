@@ -38,7 +38,7 @@ const result = await build({
   format: 'cjs',
   platform: 'browser',
   jsx: 'automatic',
-  external: ['react', 'react/jsx-runtime'],
+  external: ['react', 'react/jsx-runtime', 'react-dom'],
   write: false,
   logLevel: 'info',
 })
