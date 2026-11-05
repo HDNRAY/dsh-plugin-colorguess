@@ -12,6 +12,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type RefObject,
 } from 'react'
+import { createPortal } from 'react-dom'
 import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { HostTheme } from './index.ts'
 
@@ -302,6 +303,23 @@ export function GameAction({ gameUrl, subscribeTheme }: GameActionProps) {
     })
   }, [open, subscribeTheme])
 
+  // DSH 0.2.x clips and masks the header cluster (overflow: clip + mask-image
+  // on .titleCluster), so a fixed-position overlay rendered inside the slot
+  // entry is trimmed away — the button would look dead. The slot docs are
+  // explicit that overlays must portal; render the window into <body>.
+  const overlay =
+    open && typeof document !== 'undefined'
+      ? createPortal(
+          <FloatingWindow
+            gameUrl={gameUrl}
+            theme={theme}
+            iframeRef={iframeRef}
+            onClose={() => setOpen(false)}
+          />,
+          document.body,
+        )
+      : null
+
   return (
     <>
       <button
@@ -312,14 +330,7 @@ export function GameAction({ gameUrl, subscribeTheme }: GameActionProps) {
       >
         ColorGuess
       </button>
-      {open ? (
-        <FloatingWindow
-          gameUrl={gameUrl}
-          theme={theme}
-          iframeRef={iframeRef}
-          onClose={() => setOpen(false)}
-        />
-      ) : null}
+      {overlay}
     </>
   )
 }
